@@ -104,27 +104,11 @@ bool CAirQualitySensor::create_carbon_dioxide_concentration_measurement_cluster(
     cluster = esp_matter::cluster::get(m_endpoint, chip::app::Clusters::CarbonDioxideConcentrationMeasurement::Id);
     if (!cluster) {
         esp_matter::cluster::carbon_dioxide_concentration_measurement::config_t cfg_co2measure_cluster;
+        cfg_co2measure_cluster.feature_flags = esp_matter::cluster::carbon_dioxide_concentration_measurement::feature::numeric_measurement::get_id();
         cluster = esp_matter::cluster::carbon_dioxide_concentration_measurement::create(m_endpoint, &cfg_co2measure_cluster, esp_matter::cluster_flags::CLUSTER_FLAG_SERVER);
         if (!cluster) {
             GetLogger(eLogType::Error)->Log("Failed to create <Carbon Dioxide Concentration Measurement> cluster");
             return false;
-        }
-
-        // set feature map
-        attribute = esp_matter::attribute::get(cluster, chip::app::Clusters::Globals::Attributes::FeatureMap::Id);
-        if (attribute) {
-            val = esp_matter_invalid(nullptr);
-            ret = esp_matter::attribute::get_val(attribute, &val);
-            if (ret != ESP_OK) {
-                GetLogger(eLogType::Error)->Log("Failed to get FeatureMap attribute value (ret: %d)", ret);
-                return false;
-            }
-            val.val.u32 |= 0x1; // MEA, Cluster supports numeric measurement of substance
-            ret = esp_matter::attribute::set_val(attribute, &val);
-            if (ret != ESP_OK) {
-                GetLogger(eLogType::Error)->Log("Failed to set FeatureMap attribute value (ret: %d)", ret);
-                return false;
-            }
         }
 
         // create <Measured Value> attribute
@@ -133,7 +117,6 @@ bool CAirQualitySensor::create_carbon_dioxide_concentration_measurement_cluster(
         if (!attribute) {
             flags = esp_matter::attribute_flags::ATTRIBUTE_FLAG_NULLABLE;
             attribute = esp_matter::attribute::create(cluster, attribute_id, flags, esp_matter_nullable_float(nullable<float>()));
-            // attribute = esp_matter::attribute::create(cluster, attribute_id, flags, esp_matter_nullable_uint16(nullable<uint16_t>()));
             if (!attribute) {
                 GetLogger(eLogType::Error)->Log("Failed to create <Measured Value> attribute");
                 return false;
