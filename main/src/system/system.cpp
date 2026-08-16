@@ -159,15 +159,25 @@ void CSystem::callback_default_button(void *arg, void *data)
 bool CSystem::init_default_button()
 {
     button_config_t cfg = button_config_t();
-    cfg.type = BUTTON_TYPE_GPIO;
     cfg.long_press_time = 5000;
     cfg.short_press_time = 180;
-    cfg.gpio_button_config.gpio_num = GPIO_PIN_DEFAULT_BTN;
-    cfg.gpio_button_config.active_level = 0; // active low (zero level when pressed)
-
-    m_handle_default_btn = iot_button_create(&cfg);
-    if (!m_handle_default_btn) {
-        GetLogger(eLogType::Error)->Log("Failed to create iot button");
+    
+    button_gpio_config_t gpio_cfg = {
+        .gpio_num = GPIO_PIN_DEFAULT_BTN,
+        .active_level = 0,
+        .enable_power_save = false,
+    };
+    
+    button_driver_t *driver = nullptr;
+    esp_err_t ret = button_driver_create_gpio(&gpio_cfg, &driver);
+    if (ret != ESP_OK || !driver) {
+        GetLogger(eLogType::Error)->Log("Failed to create button driver (ret: %d)", ret);
+        return false;
+    }
+    
+    ret = iot_button_create(&cfg, driver, &m_handle_default_btn);
+    if (ret != ESP_OK || !m_handle_default_btn) {
+        GetLogger(eLogType::Error)->Log("Failed to create button (ret: %d)", ret);
         return false;
     }
 
