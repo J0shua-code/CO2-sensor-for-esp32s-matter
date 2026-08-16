@@ -171,12 +171,12 @@ bool CSystem::init_default_button()
         return false;
     }
 
-    iot_button_register_cb(m_handle_default_btn, BUTTON_PRESS_DOWN, callback_default_button, nullptr);
-    iot_button_register_cb(m_handle_default_btn, BUTTON_PRESS_UP, callback_default_button, nullptr);
-    iot_button_register_cb(m_handle_default_btn, BUTTON_SINGLE_CLICK, callback_default_button, nullptr);
-    iot_button_register_cb(m_handle_default_btn, BUTTON_DOUBLE_CLICK, callback_default_button, nullptr);
-    iot_button_register_cb(m_handle_default_btn, BUTTON_LONG_PRESS_START, callback_default_button, nullptr);
-    iot_button_register_cb(m_handle_default_btn, BUTTON_LONG_PRESS_HOLD, callback_default_button, nullptr);
+    iot_button_register_cb(m_handle_default_btn, BUTTON_PRESS_DOWN, nullptr, callback_default_button, nullptr);
+    iot_button_register_cb(m_handle_default_btn, BUTTON_PRESS_UP, nullptr, callback_default_button, nullptr);
+    iot_button_register_cb(m_handle_default_btn, BUTTON_SINGLE_CLICK, nullptr, callback_default_button, nullptr);
+    iot_button_register_cb(m_handle_default_btn, BUTTON_DOUBLE_CLICK, nullptr, callback_default_button, nullptr);
+    iot_button_register_cb(m_handle_default_btn, BUTTON_LONG_PRESS_START, nullptr, callback_default_button, nullptr);
+    iot_button_register_cb(m_handle_default_btn, BUTTON_LONG_PRESS_HOLD, nullptr, callback_default_button, nullptr);
     
     return true;
 }
