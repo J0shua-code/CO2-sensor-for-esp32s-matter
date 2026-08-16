@@ -29,29 +29,35 @@ bool CAirQualitySensor::matter_config_attributes()
     esp_matter::attribute_t *attribute;
     esp_matter_attr_val_t val;
 
-    // set air quality as GOOD
     cluster = esp_matter::cluster::get(m_endpoint, chip::app::Clusters::AirQuality::Id);
     if (cluster) {
         attribute = esp_matter::attribute::get(cluster, chip::app::Clusters::AirQuality::Attributes::AirQuality::Id);
         if (attribute) {
             val = esp_matter_invalid(nullptr);
             ret = esp_matter::attribute::get_val(attribute, &val);
-            if (ret != ESP_OK) {
-                GetLogger(eLogType::Error)->Log("Failed to get AirQuality attribute value (ret: %d)", ret);
-                return false;
-            }
-            val.val.u8 = 1; // GOOD
-            ret = esp_matter::attribute::set_val(attribute, &val);
-            if (ret != ESP_OK) {
-                GetLogger(eLogType::Error)->Log("Failed to set AirQuality attribute value (ret: %d)", ret);
-                return false;
+            if (ret == ESP_OK) {
+                val.val.u8 = 1;
+                ret = esp_matter::attribute::set_val(attribute, &val);
+                if (ret != ESP_OK) {
+                    GetLogger(eLogType::Warning)->Log("Failed to set AirQuality attribute value (ret: %d)", ret);
+                }
+            } else {
+                GetLogger(eLogType::Warning)->Log("Failed to get AirQuality attribute value (ret: %d)", ret);
             }
         }
+    } else {
+        GetLogger(eLogType::Warning)->Log("AirQuality cluster not found, skipping setup");
     }
 
-    if (!create_temperature_measurement_cluster()) return false;
-    if (!create_relative_humidity_measurement_cluster()) return false;
-    if (!create_carbon_dioxide_concentration_measurement_cluster()) return false;
+    if (!create_temperature_measurement_cluster()) {
+        GetLogger(eLogType::Error)->Log("Failed to create temperature cluster");
+    }
+    if (!create_relative_humidity_measurement_cluster()) {
+        GetLogger(eLogType::Error)->Log("Failed to create humidity cluster");
+    }
+    if (!create_carbon_dioxide_concentration_measurement_cluster()) {
+        GetLogger(eLogType::Error)->Log("Failed to create CO2 cluster");
+    }
 
     return true;
 }

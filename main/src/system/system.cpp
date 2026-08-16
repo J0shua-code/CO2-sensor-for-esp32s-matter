@@ -89,6 +89,18 @@ bool CSystem::initialize()
     }
     GetLogger(eLogType::Info)->Log("Root node (endpoint 0) added");
 
+    // add airquality sensor endpoint
+    CAirQualitySensor *sensor = new CAirQualitySensor();
+    if (sensor && sensor->matter_init_endpoint()) {
+        m_device_list.push_back(sensor);
+        sensor->set_carbon_dioxide_concentration_measurement_min_measured_value(400.f);
+        sensor->set_carbon_dioxide_concentration_measurement_max_measured_value(5000.f);
+        sensor->set_carbon_dioxide_concentration_measurement_measurement_unit(eMeasurementUnit::PPM);
+    } else {
+        GetLogger(eLogType::Error)->Log("Failed to create air quality sensor endpoint");
+        return false;
+    }
+
     // start matter
     ret = esp_matter::start(matter_event_callback);
     if (ret != ESP_OK) {
@@ -98,17 +110,6 @@ bool CSystem::initialize()
     // prevent endpoint id increment when board reset
     matter_set_min_endpoint_id(1);
     GetLogger(eLogType::Info)->Log("Matter started");
-
-    // add airquality sensor endpoint
-    CAirQualitySensor *sensor = new CAirQualitySensor();
-    if (sensor && sensor->matter_init_endpoint()) {
-        m_device_list.push_back(sensor);
-        sensor->set_carbon_dioxide_concentration_measurement_min_measured_value(400.f);
-        sensor->set_carbon_dioxide_concentration_measurement_max_measured_value(5000.f);
-        sensor->set_carbon_dioxide_concentration_measurement_measurement_unit(eMeasurementUnit::PPM);
-    } else {
-        return false;
-    }
 
     m_initialized = true;
     GetLogger(eLogType::Info)->Log("Initialized");
