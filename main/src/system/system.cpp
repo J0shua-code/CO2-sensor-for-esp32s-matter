@@ -11,12 +11,11 @@
 #include "util.h"
 #include "logger.h"
 #include "definition.h"
-#include "scd41.h"
+#include "scd30.h"
 #include "airqualitysensor.h"
 
 #define TASK_TIMER_STACK_DEPTH  3072
 #define TASK_TIMER_PRIORITY     5
-#define MEASURE_PERIOD_US       10000000
 
 CSystem* CSystem::_instance = nullptr;
 bool CSystem::m_default_btn_pressed_long = false;
@@ -77,7 +76,7 @@ bool CSystem::initialize()
     m_i2c_master = GetI2CMaster();
     m_i2c_master->initialize(I2C_PORT_NUM, GPIO_PIN_I2C_SCL, GPIO_PIN_I2C_SDA, I2C_MASTER_FREQ);
 
-    GetScd41Ctrl()->initialize(m_i2c_master);
+    GetScd30Ctrl()->initialize(m_i2c_master);
     
     // create matter root node
     esp_matter::node::config_t node_config;
@@ -416,49 +415,31 @@ esp_err_t CSystem::matter_attribute_update_callback(esp_matter::attribute::callb
 void CSystem::task_timer_function(void *param)
 {
     CSystem *obj = static_cast<CSystem *>(param);
-    int64_t current_tick_us;
-    int64_t last_tick_us = 0;
     CDevice * dev;
-    uint16_t co2ppm = 0;
+    float co2ppm = 0.f;
     float temperature = 0.f;
     float humidity = 0.f;
-    bool measure_shot = false;
 
     GetLogger(eLogType::Info)->Log("Realtime task (timer) started");
+
+    GetScd30Ctrl()->start_periodic_measure();
+
     while (obj->m_keepalive) {
         if (obj->m_initialized) {
-            if (!measure_shot) {
-                current_tick_us = esp_timer_get_time();
-                if (current_tick_us - last_tick_us >= MEASURE_PERIOD_US) {
-                    GetScd41Ctrl()->measure_single_shot();
-                    measure_shot = true;
-                    last_tick_us = current_tick_us;
-                }
-            } else {
-                if (!GetScd41Ctrl()->is_measurement_data_ready()) {
-                    vTaskDelay(pdMS_TO_TICKS(100));
-                    current_tick_us = esp_timer_get_time();
-                    if (current_tick_us - last_tick_us >= MEASURE_PERIOD_US) {
-                        measure_shot = false;
-                        last_tick_us = current_tick_us;
-                    }
-                    continue;
-                }
-
-                if (GetScd41Ctrl()->read_measurement(&co2ppm, &temperature, &humidity)) {
+            if (GetScd30Ctrl()->is_measurement_data_ready()) {
+                if (GetScd30Ctrl()->read_measurement(&co2ppm, &temperature, &humidity)) {
                     dev = obj->find_device_by_endpoint_id(1);
                     if (dev) {
-                        dev->update_measured_value_co2ppm((float)co2ppm);
+                        dev->update_measured_value_co2ppm(co2ppm);
                         dev->update_measured_value_temperature(temperature);
                         dev->update_measured_value_humidity(humidity);
                     }
+                    GetLogger(eLogType::Info)->Log("CO2 PPM: %.1f, Temperature: %.2f, Humidity: %.1f", co2ppm, temperature, humidity);
                 }
-                measure_shot = false;
-                GetLogger(eLogType::Info)->Log("CO2 PPM: %u, Temperature: %g, Humidity: %g", co2ppm, temperature, humidity);
             }
         }
 
-        vTaskDelay(pdMS_TO_TICKS(50));
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
     GetLogger(eLogType::Info)->Log("Realtime task (timer) terminated");
     vTaskDelete(nullptr);

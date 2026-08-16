@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-set(ENV{ESP_MATTER_DEVICE_PATH} $ENV{ESP_MATTER_PATH}/device_hal/device/esp32_devkit_c)
+set(ENV{ESP_MATTER_DEVICE_PATH} $ENV{ESP_MATTER_PATH}/device_hal/device/esp32s3_devkit_c)
 set(PROJECT_VER "1.0.0.0")
 set(PROJECT_VER_NUMBER 20240210)
 
@@ -18,7 +18,7 @@ set(EXTRA_COMPONENT_DIRS
     ${extra_components_dirs_append}
 )
 
-project(yogyui-matter-esp32-scd41)
+project(yogyui-matter-esp32s3-scd30)
 idf_build_set_property(CXX_COMPILE_OPTIONS "-std=gnu++17;-Os" APPEND)
 idf_build_set_property(CXX_COMPILE_OPTIONS "-Os" APPEND)
 idf_build_set_property(CXX_COMPILE_OPTIONS "-DCHIP_HAVE_CONFIG_H" APPEND)
