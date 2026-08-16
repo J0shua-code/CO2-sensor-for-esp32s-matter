@@ -601,9 +601,8 @@ cJSON* get_matter_value_item(esp_matter_attr_val_t value)
 cJSON* dump_matter_endpoint_info(uint16_t endpoint_id)
 {
     char temp[64]{};
-    uint8_t dev_type_count;
+    size_t dev_type_count;
     uint32_t cluster_id, attr_id, cmd_id;
-    uint32_t *dev_type_ids;
     esp_matter::node_t* root_node = GetSystem()->get_root_node();
 
     if (root_node) {
@@ -616,13 +615,16 @@ cJSON* dump_matter_endpoint_info(uint16_t endpoint_id)
             // device type
             cJSON *array_device_type = cJSON_CreateArray();
             cJSON_AddItemToObject(root, "device_type", array_device_type);
-            dev_type_ids = esp_matter::endpoint::get_device_type_ids(endpoint, &dev_type_count);
-            for (uint8_t cnt = 0; cnt < dev_type_count; cnt++) {
+            dev_type_count = esp_matter::endpoint::get_device_type_count(endpoint);
+            for (size_t cnt = 0; cnt < dev_type_count; cnt++) {
+                uint32_t dev_type_id;
+                uint8_t dev_type_version;
+                esp_matter::endpoint::get_device_type_at_index(endpoint, cnt, dev_type_id, dev_type_version);
                 item = cJSON_CreateObject();
                 cJSON_AddItemToArray(array_device_type, item);
-                snprintf(temp, sizeof(temp), "0x%04X", dev_type_ids[cnt]);
+                snprintf(temp, sizeof(temp), "0x%04X", dev_type_id);
                 cJSON_AddStringToObject(item, "id", temp);
-                cJSON_AddStringToObject(item, "name", get_matter_device_name(dev_type_ids[cnt]));
+                cJSON_AddStringToObject(item, "name", get_matter_device_name(dev_type_id));
             }
 
             // clusters
