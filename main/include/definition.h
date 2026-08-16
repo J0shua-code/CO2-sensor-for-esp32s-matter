@@ -20,6 +20,6 @@
 
 #define TASK_STACK_DEPTH        4096
 
-#define SCD30_USE_DUMMY_DATA    0
+#define SCD30_USE_DUMMY_DATA    1
 
 #endif
