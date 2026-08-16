@@ -256,7 +256,7 @@ bool CScd30Ctrl::is_measurement_data_ready()
 #if SCD30_USE_DUMMY_DATA
     static uint32_t last_tick = 0;
     uint32_t current_tick = xTaskGetTickCount();
-    if ((current_tick - last_tick) >= pdMS_TO_TICKS(2000)) {
+    if ((current_tick - last_tick) >= pdMS_TO_TICKS(60000)) {
         last_tick = current_tick;
         return true;
     }
