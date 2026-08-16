@@ -33,16 +33,12 @@ bool CAirQualitySensor::matter_config_attributes()
     if (cluster) {
         attribute = esp_matter::attribute::get(cluster, chip::app::Clusters::AirQuality::Attributes::AirQuality::Id);
         if (attribute) {
-            val = esp_matter_invalid(nullptr);
-            ret = esp_matter::attribute::get_val(attribute, &val);
-            if (ret == ESP_OK) {
-                val.val.u8 = 1;
-                ret = esp_matter::attribute::set_val(attribute, &val);
-                if (ret != ESP_OK) {
-                    GetLogger(eLogType::Warning)->Log("Failed to set AirQuality attribute value (ret: %d)", ret);
-                }
+            val = esp_matter_enum8(1); // GOOD
+            ret = esp_matter::attribute::set_val(attribute, &val);
+            if (ret != ESP_OK) {
+                GetLogger(eLogType::Warning)->Log("Failed to set AirQuality value (ret: %d)", ret);
             } else {
-                GetLogger(eLogType::Warning)->Log("Failed to get AirQuality attribute value (ret: %d)", ret);
+                GetLogger(eLogType::Info)->Log("AirQuality set to GOOD");
             }
         }
     } else {
@@ -67,6 +63,8 @@ bool CAirQualitySensor::create_temperature_measurement_cluster()
     esp_matter::cluster_t *cluster = esp_matter::cluster::get(m_endpoint, chip::app::Clusters::TemperatureMeasurement::Id);
     if (!cluster) {
         esp_matter::cluster::temperature_measurement::config_t cfg_tempmeasure_cluster;
+        cfg_tempmeasure_cluster.min_measured_value = -4000;  // -40.00 C (SCD30 range)
+        cfg_tempmeasure_cluster.max_measured_value = 7000;   //  70.00 C
         cluster = esp_matter::cluster::temperature_measurement::create(m_endpoint, &cfg_tempmeasure_cluster, esp_matter::cluster_flags::CLUSTER_FLAG_SERVER);
         if (!cluster) {
             GetLogger(eLogType::Error)->Log("Failed to create <Temperature Measurement> cluster");
@@ -82,6 +80,8 @@ bool CAirQualitySensor::create_relative_humidity_measurement_cluster()
     esp_matter::cluster_t *cluster = esp_matter::cluster::get(m_endpoint, chip::app::Clusters::RelativeHumidityMeasurement::Id);
     if (!cluster) {
         esp_matter::cluster::relative_humidity_measurement::config_t cfg_relhummeasure_cluster;
+        cfg_relhummeasure_cluster.min_measured_value = 0;      // 0.00 %
+        cfg_relhummeasure_cluster.max_measured_value = 10000;  // 100.00 %
         cluster = esp_matter::cluster::relative_humidity_measurement::create(m_endpoint, &cfg_relhummeasure_cluster, esp_matter::cluster_flags::CLUSTER_FLAG_SERVER);
         if (!cluster) {
             GetLogger(eLogType::Error)->Log("Failed to create <Relative Humidity Measurement> cluster");
