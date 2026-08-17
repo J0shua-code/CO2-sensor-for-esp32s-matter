@@ -7,12 +7,14 @@ CAirQualitySensor::CAirQualitySensor()
     m_matter_update_by_client_clus_co2measure_attr_measureval = false;
     m_matter_update_by_client_clus_tempmeasure_attr_measureval = false;
     m_matter_update_by_client_clus_relhummeasure_attr_measureval = false;
+    m_air_quality = 1; // Good
 }
 
 bool CAirQualitySensor::matter_init_endpoint()
 {
     esp_matter::node_t *root = GetSystem()->get_root_node();
     esp_matter::endpoint::air_quality_sensor::config_t config_endpoint;
+    config_endpoint.air_quality.air_quality = 1; // Good (initial value)
     uint8_t flags = esp_matter::ENDPOINT_FLAG_DESTROYABLE;
     m_endpoint = esp_matter::endpoint::air_quality_sensor::create(root, &config_endpoint, flags, nullptr);
     if (!m_endpoint) {
@@ -24,25 +26,19 @@ bool CAirQualitySensor::matter_init_endpoint()
 
 bool CAirQualitySensor::matter_config_attributes()
 {
-    esp_err_t ret;
     esp_matter::cluster_t *cluster;
-    esp_matter::attribute_t *attribute;
-    esp_matter_attr_val_t val;
 
+    // enable all air quality level features (required by Matter spec
+    // to use Fair/Moderate/VeryPoor/ExtremelyPoor enum values)
     cluster = esp_matter::cluster::get(m_endpoint, chip::app::Clusters::AirQuality::Id);
     if (cluster) {
-        attribute = esp_matter::attribute::get(cluster, chip::app::Clusters::AirQuality::Attributes::AirQuality::Id);
-        if (attribute) {
-            val = esp_matter_enum8(1); // GOOD
-            ret = esp_matter::attribute::set_val(attribute, &val);
-            if (ret != ESP_OK) {
-                GetLogger(eLogType::Warning)->Log("Failed to set AirQuality value (ret: %d)", ret);
-            } else {
-                GetLogger(eLogType::Info)->Log("AirQuality set to GOOD");
-            }
-        }
+        esp_matter::cluster::air_quality::feature::fair::add(cluster);
+        esp_matter::cluster::air_quality::feature::moderate::add(cluster);
+        esp_matter::cluster::air_quality::feature::very_poor::add(cluster);
+        esp_matter::cluster::air_quality::feature::extremely_poor::add(cluster);
+        GetLogger(eLogType::Info)->Log("AirQuality cluster configured with all level features");
     } else {
-        GetLogger(eLogType::Warning)->Log("AirQuality cluster not found, skipping setup");
+        GetLogger(eLogType::Warning)->Log("AirQuality cluster not found");
     }
 
     if (!create_temperature_measurement_cluster()) {
@@ -63,6 +59,7 @@ bool CAirQualitySensor::create_temperature_measurement_cluster()
     esp_matter::cluster_t *cluster = esp_matter::cluster::get(m_endpoint, chip::app::Clusters::TemperatureMeasurement::Id);
     if (!cluster) {
         esp_matter::cluster::temperature_measurement::config_t cfg_tempmeasure_cluster;
+        cfg_tempmeasure_cluster.measured_value = (int16_t)2350;       //  23.50 C (initial)
         cfg_tempmeasure_cluster.min_measured_value = (int16_t)-4000;  // -40.00 C (SCD30 range)
         cfg_tempmeasure_cluster.max_measured_value = (int16_t)7000;   //  70.00 C
         cluster = esp_matter::cluster::temperature_measurement::create(m_endpoint, &cfg_tempmeasure_cluster, esp_matter::cluster_flags::CLUSTER_FLAG_SERVER);
@@ -80,6 +77,7 @@ bool CAirQualitySensor::create_relative_humidity_measurement_cluster()
     esp_matter::cluster_t *cluster = esp_matter::cluster::get(m_endpoint, chip::app::Clusters::RelativeHumidityMeasurement::Id);
     if (!cluster) {
         esp_matter::cluster::relative_humidity_measurement::config_t cfg_relhummeasure_cluster;
+        cfg_relhummeasure_cluster.measured_value = (uint16_t)4500;     // 45.00 % (initial)
         cfg_relhummeasure_cluster.min_measured_value = (uint16_t)0;      // 0.00 %
         cfg_relhummeasure_cluster.max_measured_value = (uint16_t)10000;  // 100.00 %
         cluster = esp_matter::cluster::relative_humidity_measurement::create(m_endpoint, &cfg_relhummeasure_cluster, esp_matter::cluster_flags::CLUSTER_FLAG_SERVER);
@@ -94,12 +92,7 @@ bool CAirQualitySensor::create_relative_humidity_measurement_cluster()
 
 bool CAirQualitySensor::create_carbon_dioxide_concentration_measurement_cluster()
 {
-    esp_err_t ret;
     esp_matter::cluster_t *cluster;
-    esp_matter::attribute_t *attribute;
-    esp_matter_attr_val_t val;
-    uint32_t attribute_id;
-    uint8_t flags;
 
     cluster = esp_matter::cluster::get(m_endpoint, chip::app::Clusters::CarbonDioxideConcentrationMeasurement::Id);
     if (!cluster) {
@@ -110,54 +103,8 @@ bool CAirQualitySensor::create_carbon_dioxide_concentration_measurement_cluster(
             GetLogger(eLogType::Error)->Log("Failed to create <Carbon Dioxide Concentration Measurement> cluster");
             return false;
         }
-
-        // create <Measured Value> attribute
-        attribute_id = chip::app::Clusters::CarbonDioxideConcentrationMeasurement::Attributes::MeasuredValue::Id;
-        attribute = esp_matter::attribute::get(cluster, attribute_id);
-        if (!attribute) {
-            flags = esp_matter::attribute_flags::ATTRIBUTE_FLAG_NULLABLE;
-            attribute = esp_matter::attribute::create(cluster, attribute_id, flags, esp_matter_nullable_float(nullable<float>()));
-            if (!attribute) {
-                GetLogger(eLogType::Error)->Log("Failed to create <Measured Value> attribute");
-                return false;
-            }
-        }
-
-        // create <Min Measured Value> attribute & set value
-        attribute_id = chip::app::Clusters::CarbonDioxideConcentrationMeasurement::Attributes::MinMeasuredValue::Id;
-        attribute = esp_matter::attribute::get(cluster, attribute_id);
-        if (!attribute) {
-            flags = esp_matter::attribute_flags::ATTRIBUTE_FLAG_NULLABLE;
-            attribute = esp_matter::attribute::create(cluster, attribute_id, flags, esp_matter_nullable_float(nullable<float>()));
-            if (!attribute) {
-                GetLogger(eLogType::Error)->Log("Failed to create <Min Measured Value> attribute");
-                return false;
-            }
-        }
-
-        // create <Max Measured Value> attribute & set value
-        attribute_id = chip::app::Clusters::CarbonDioxideConcentrationMeasurement::Attributes::MaxMeasuredValue::Id;
-        attribute = esp_matter::attribute::get(cluster, attribute_id);
-        if (!attribute) {
-            flags = esp_matter::attribute_flags::ATTRIBUTE_FLAG_NULLABLE;
-            attribute = esp_matter::attribute::create(cluster, attribute_id, flags, esp_matter_nullable_float(nullable<float>()));
-            if (!attribute) {
-                GetLogger(eLogType::Error)->Log("Failed to create <Max Measured Value> attribute");
-                return false;
-            }
-        }
-
-        // create <Measurement Unit> attribute & set value
-        attribute_id = chip::app::Clusters::CarbonDioxideConcentrationMeasurement::Attributes::MeasurementUnit::Id;
-        attribute = esp_matter::attribute::get(cluster, chip::app::Clusters::CarbonDioxideConcentrationMeasurement::Attributes::MeasurementUnit::Id);
-        if (!attribute) {
-            flags = esp_matter::attribute_flags::ATTRIBUTE_FLAG_NONE;
-            attribute = esp_matter::attribute::create(cluster, attribute_id, flags, esp_matter_enum8(0));   // PPM
-            if (!attribute) {
-                GetLogger(eLogType::Error)->Log("Failed to create <Measurement Unit> attribute");
-                return false;
-            }
-        }
+        // numeric_measurement feature auto-creates MeasuredValue, MinMeasuredValue,
+        // MaxMeasuredValue and MeasurementUnit attributes
     }
 
     return true;
@@ -218,7 +165,7 @@ bool CAirQualitySensor::set_carbon_dioxide_concentration_measurement_measurement
         GetLogger(eLogType::Error)->Log("Failed to get MeasurementUnit attribute");
         return false;
     }
-    esp_matter_attr_val_t val = esp_matter_enum8(value);
+    esp_matter_attr_val_t val = esp_matter_uint8((uint8_t)value);
     esp_err_t ret = esp_matter::attribute::set_val(attribute, &val);
     if (ret != ESP_OK) {
         GetLogger(eLogType::Error)->Log("Failed to set MeasurementUnit attribute value (ret: %d)", ret);
@@ -264,8 +211,38 @@ void CAirQualitySensor::update_measured_value_co2ppm(float value)
     if (m_measured_value_co2ppm != m_measured_value_co2ppm_prev) {
         GetLogger(eLogType::Info)->Log("Update measured CO2 concentration value as %g", value);
         matter_update_clus_co2measure_attr_measureval();
+        update_air_quality_from_co2(value);
     }
     m_measured_value_co2ppm_prev = m_measured_value_co2ppm;
+}
+
+void CAirQualitySensor::update_air_quality_from_co2(float co2_ppm)
+{
+    // Matter AirQualityEnum: 0=Unknown 1=Good 2=Fair 3=Moderate 4=Poor 5=VeryPoor 6=ExtremelyPoor
+    uint8_t aq;
+    if (co2_ppm < 800.f)        aq = 1; // Good
+    else if (co2_ppm < 1000.f)  aq = 2; // Fair
+    else if (co2_ppm < 1500.f)  aq = 3; // Moderate
+    else if (co2_ppm < 2000.f)  aq = 4; // Poor
+    else if (co2_ppm < 3000.f)  aq = 5; // Very Poor
+    else                        aq = 6; // Extremely Poor
+
+    if (aq == m_air_quality)
+        return;
+    m_air_quality = aq;
+
+    esp_matter_attr_val_t val = esp_matter_enum8(aq);
+    esp_err_t ret = esp_matter::attribute::update(
+        m_endpoint_id,
+        chip::app::Clusters::AirQuality::Id,
+        chip::app::Clusters::AirQuality::Attributes::AirQuality::Id,
+        &val
+    );
+    if (ret == ESP_OK) {
+        GetLogger(eLogType::Info)->Log("Air quality updated to %d (CO2: %g ppm)", aq, co2_ppm);
+    } else {
+        GetLogger(eLogType::Warning)->Log("Failed to update air quality (ret: %d)", ret);
+    }
 }
 
 void CAirQualitySensor::update_measured_value_temperature(float value)

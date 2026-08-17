@@ -53,9 +53,12 @@ private:
     bool m_matter_update_by_client_clus_tempmeasure_attr_measureval;
     bool m_matter_update_by_client_clus_relhummeasure_attr_measureval;
 
+    uint8_t m_air_quality;
+
     void matter_update_clus_co2measure_attr_measureval(bool force_update = false);
     void matter_update_clus_tempmeasure_attr_measureval(bool force_update = false);
     void matter_update_clus_relhummeasure_attr_measureval(bool force_update = false);
+    void update_air_quality_from_co2(float co2_ppm);
 };
 
 #ifdef __cplusplus
