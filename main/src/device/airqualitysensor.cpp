@@ -165,7 +165,7 @@ bool CAirQualitySensor::set_carbon_dioxide_concentration_measurement_measurement
         GetLogger(eLogType::Error)->Log("Failed to get MeasurementUnit attribute");
         return false;
     }
-    esp_matter_attr_val_t val = esp_matter_uint8((uint8_t)value);
+    esp_matter_attr_val_t val = esp_matter_enum8((uint8_t)value);
     esp_err_t ret = esp_matter::attribute::set_val(attribute, &val);
     if (ret != ESP_OK) {
         GetLogger(eLogType::Error)->Log("Failed to set MeasurementUnit attribute value (ret: %d)", ret);
