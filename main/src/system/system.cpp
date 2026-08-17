@@ -14,6 +14,8 @@
 #include "definition.h"
 #include "scd30.h"
 #include "airqualitysensor.h"
+#include "temperaturesensor.h"
+#include "humiditysensor.h"
 
 #define TASK_TIMER_STACK_DEPTH  3072
 #define TASK_TIMER_PRIORITY     5
@@ -98,6 +100,24 @@ bool CSystem::initialize()
         sensor->set_carbon_dioxide_concentration_measurement_measurement_unit(eMeasurementUnit::PPM);
     } else {
         GetLogger(eLogType::Error)->Log("Failed to create air quality sensor endpoint");
+        return false;
+    }
+
+    // add temperature sensor endpoint
+    CTemperatureSensor *temp_sensor = new CTemperatureSensor();
+    if (temp_sensor && temp_sensor->matter_init_endpoint()) {
+        m_device_list.push_back(temp_sensor);
+    } else {
+        GetLogger(eLogType::Error)->Log("Failed to create temperature sensor endpoint");
+        return false;
+    }
+
+    // add humidity sensor endpoint
+    CHumiditySensor *humidity_sensor = new CHumiditySensor();
+    if (humidity_sensor && humidity_sensor->matter_init_endpoint()) {
+        m_device_list.push_back(humidity_sensor);
+    } else {
+        GetLogger(eLogType::Error)->Log("Failed to create humidity sensor endpoint");
         return false;
     }
 
@@ -422,7 +442,6 @@ esp_err_t CSystem::matter_attribute_update_callback(esp_matter::attribute::callb
 void CSystem::task_timer_function(void *param)
 {
     CSystem *obj = static_cast<CSystem *>(param);
-    CDevice * dev;
     float co2ppm = 0.f;
     float temperature = 0.f;
     float humidity = 0.f;
@@ -435,11 +454,10 @@ void CSystem::task_timer_function(void *param)
         if (obj->m_initialized) {
             if (GetScd30Ctrl()->is_measurement_data_ready()) {
                 if (GetScd30Ctrl()->read_measurement(&co2ppm, &temperature, &humidity)) {
-                    dev = obj->find_device_by_endpoint_id(1);
-                    if (dev) {
-                        dev->update_measured_value_co2ppm(co2ppm);
-                        dev->update_measured_value_temperature(temperature);
-                        dev->update_measured_value_humidity(humidity);
+                    for (auto &device : obj->m_device_list) {
+                        device->update_measured_value_co2ppm(co2ppm);
+                        device->update_measured_value_temperature(temperature);
+                        device->update_measured_value_humidity(humidity);
                     }
                     GetLogger(eLogType::Info)->Log("CO2 PPM: %.1f, Temperature: %.2f, Humidity: %.1f", co2ppm, temperature, humidity);
                 }

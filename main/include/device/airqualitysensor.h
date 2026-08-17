@@ -35,8 +35,6 @@ public:
     void matter_update_all_attribute_values() override;
 
 private:
-    bool create_temperature_measurement_cluster();
-    bool create_relative_humidity_measurement_cluster();
     bool create_carbon_dioxide_concentration_measurement_cluster();
 
 public:
@@ -45,19 +43,13 @@ public:
     bool set_carbon_dioxide_concentration_measurement_measurement_unit(int value);
 
     void update_measured_value_co2ppm(float value) override;
-    void update_measured_value_temperature(float value) override;
-    void update_measured_value_humidity(float value) override;
 
 private:
     bool m_matter_update_by_client_clus_co2measure_attr_measureval;
-    bool m_matter_update_by_client_clus_tempmeasure_attr_measureval;
-    bool m_matter_update_by_client_clus_relhummeasure_attr_measureval;
 
     uint8_t m_air_quality;
 
     void matter_update_clus_co2measure_attr_measureval(bool force_update = false);
-    void matter_update_clus_tempmeasure_attr_measureval(bool force_update = false);
-    void matter_update_clus_relhummeasure_attr_measureval(bool force_update = false);
     void update_air_quality_from_co2(float co2_ppm);
 };
 
