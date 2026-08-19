@@ -7,6 +7,7 @@
 #include <esp_flash.h>
 #include <esp_app_desc.h>
 #include <app/server/Server.h>
+#include <app/server/CommissioningWindowManager.h>
 #include <esp_matter_providers.h>
 #include "cJSON.h"
 #include "util.h"
@@ -166,6 +167,9 @@ void CSystem::callback_default_button(void *arg, void *data)
     case BUTTON_DOUBLE_CLICK:   // 5
         _instance->print_matter_endpoints_info();
         break;
+    case BUTTON_MULTIPLE_CLICK:   // triggered only when registered with clicks=N
+        _instance->open_commissioning_window();
+        break;
     case BUTTON_LONG_PRESS_START:   // 6
         m_default_btn_pressed_long = true;
         GetLogger(eLogType::Info)->Log("ready to factory reset");
@@ -202,6 +206,8 @@ bool CSystem::init_default_button()
     iot_button_register_cb(m_handle_default_btn, BUTTON_PRESS_UP, nullptr, callback_default_button, nullptr);
     iot_button_register_cb(m_handle_default_btn, BUTTON_SINGLE_CLICK, nullptr, callback_default_button, nullptr);
     iot_button_register_cb(m_handle_default_btn, BUTTON_DOUBLE_CLICK, nullptr, callback_default_button, nullptr);
+    button_event_args_t multi_click_args = { .multiple_clicks = { .clicks = 3 } };
+    iot_button_register_cb(m_handle_default_btn, BUTTON_MULTIPLE_CLICK, &multi_click_args, callback_default_button, nullptr);
     iot_button_register_cb(m_handle_default_btn, BUTTON_LONG_PRESS_START, nullptr, callback_default_button, nullptr);
     iot_button_register_cb(m_handle_default_btn, BUTTON_LONG_PRESS_HOLD, nullptr, callback_default_button, nullptr);
     
@@ -268,6 +274,22 @@ uint16_t CSystem::matter_get_setup_discriminator()
         }
     }
     return discriminator;
+}
+
+void CSystem::open_commissioning_window()
+{
+    chip::CommissioningWindowManager &commissionMgr = chip::Server::GetInstance().GetCommissioningWindowManager();
+    if (commissionMgr.IsCommissioningWindowOpen()) {
+        GetLogger(eLogType::Info)->Log("Commissioning window already open");
+        return;
+    }
+    CHIP_ERROR err = commissionMgr.OpenBasicCommissioningWindow(chip::System::Clock::Seconds16(300),
+                                                                chip::CommissioningWindowAdvertisement::kDnssdOnly);
+    if (err != CHIP_NO_ERROR) {
+        GetLogger(eLogType::Error)->Log("Failed to open commissioning window, err:%" CHIP_ERROR_FORMAT, err.Format());
+    } else {
+        GetLogger(eLogType::Info)->Log("Commissioning window opened (300s)");
+    }
 }
 
 void CSystem::factory_reset()

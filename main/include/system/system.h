@@ -27,6 +27,7 @@ public:
 
     esp_matter::node_t* get_root_node() { return m_root_node; }
     void factory_reset();
+    void open_commissioning_window();
     bool matter_set_min_endpoint_id(uint16_t endpoint_id);
     bool matter_align_endpoint_id();
     uint16_t matter_get_vendor_id();
